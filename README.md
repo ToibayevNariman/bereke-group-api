@@ -18,6 +18,32 @@ For production mode
 
 Run the test cases.
 
+## Development Database (Postgres via Docker)
+
+1) Copy env template:
+
+`cp .env.example .env`
+
+2) Start Postgres:
+
+`docker compose up -d`
+
+The database will be available on `localhost:${POSTGRES_PORT}` (default `5432`).
+
+## Prisma
+
+- Generate client:
+
+`npm run prisma:generate`
+
+- Create/apply dev migration:
+
+`npm run prisma:migrate`
+
+- Open Prisma Studio:
+
+`npm run prisma:studio`
+
 ## Learn More
 
 To learn Fastify, check out the [Fastify documentation](https://fastify.dev/docs/latest/).
