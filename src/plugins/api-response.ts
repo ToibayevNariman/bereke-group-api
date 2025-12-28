@@ -2,53 +2,48 @@ import fp from 'fastify-plugin'
 import type { FastifyError, FastifyPluginAsync } from 'fastify'
 import { sendError } from '../utils/apiResponse'
 
-function safeMessage(statusCode: number, error: FastifyError): string {
-  if (statusCode >= 500) return 'Internal Server Error'
-
-  // Avoid leaking internals but keep 4xx useful.
-  if (statusCode === 404) return 'Route not found'
-  if (statusCode === 405) return 'Method not allowed'
-
-  // fastify validation / sensible errors have safe messages; keep them.
-  if (typeof error.message === 'string' && error.message.length > 0) return error.message
-  return 'Request failed'
-}
-
-function stableCode(statusCode: number, error: FastifyError): string {
-  // Prefer Fastify/Sensible codes when present, but normalize for 5xx.
-  if (statusCode >= 500) return 'INTERNAL_SERVER_ERROR'
-
-  if (typeof (error as any).code === 'string' && (error as any).code.length > 0) {
-    return String((error as any).code)
+function pickErrorResponse(statusCode: number, error: FastifyError) {
+  const validation = (error as any).validation
+  if (validation) {
+    return {
+      statusCode: 400,
+      code: 'VALIDATION_FAILED',
+      messageKey: 'errors.validation_failed',
+      details: validation
+    }
   }
 
-  switch (statusCode) {
-    case 400:
-      return 'BAD_REQUEST'
-    case 401:
-      return 'UNAUTHORIZED'
-    case 403:
-      return 'FORBIDDEN'
-    case 404:
-      return 'NOT_FOUND'
-    case 405:
-      return 'METHOD_NOT_ALLOWED'
-    case 413:
-      return 'PAYLOAD_TOO_LARGE'
-    case 415:
-      return 'UNSUPPORTED_MEDIA_TYPE'
-    case 422:
-      return 'UNPROCESSABLE_ENTITY'
-    case 429:
-      return 'TOO_MANY_REQUESTS'
-    default:
-      return 'REQUEST_FAILED'
+  if (statusCode === 401) {
+    return { statusCode: 401, code: 'UNAUTHORIZED', messageKey: 'errors.unauthorized' }
   }
+
+  if (statusCode === 403) {
+    return { statusCode: 403, code: 'FORBIDDEN', messageKey: 'errors.forbidden' }
+  }
+
+  if (statusCode === 404) {
+    return { statusCode: 404, code: 'NOT_FOUND', messageKey: 'errors.not_found' }
+  }
+
+  if (statusCode === 429) {
+    return { statusCode: 429, code: 'TOO_MANY_REQUESTS', messageKey: 'errors.too_many_requests' }
+  }
+
+  if (statusCode === 400) {
+    return { statusCode: 400, code: 'BAD_REQUEST', messageKey: 'errors.bad_request' }
+  }
+
+  if (statusCode >= 500) {
+    return { statusCode: 500, code: 'INTERNAL', messageKey: 'errors.internal' }
+  }
+
+  // Fallback for other 4xx/5xx.
+  return { statusCode, code: 'BAD_REQUEST', messageKey: 'errors.bad_request' }
 }
 
 const apiResponsePlugin: FastifyPluginAsync = async (fastify): Promise<void> => {
   fastify.setNotFoundHandler(async (request, reply) => {
-    sendError(reply, 404, 'NOT_FOUND', 'Route not found')
+    sendError(reply, 404, 'NOT_FOUND', request.t('errors.not_found'))
   })
 
   fastify.setErrorHandler(async (error: FastifyError, request, reply) => {
@@ -57,7 +52,8 @@ const apiResponsePlugin: FastifyPluginAsync = async (fastify): Promise<void> => 
     // Log full error server-side.
     request.log.error({ err: error }, 'Request failed')
 
-    sendError(reply, statusCode, stableCode(statusCode, error), safeMessage(statusCode, error))
+    const picked = pickErrorResponse(statusCode, error)
+    sendError(reply, picked.statusCode, picked.code, request.t(picked.messageKey), picked.details)
   })
 }
 

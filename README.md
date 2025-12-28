@@ -84,3 +84,18 @@
 ## Полезные ссылки
 
 Документация Fastify: [https://fastify.dev/docs/latest/](https://fastify.dev/docs/latest/)
+
+## Локализация ответов API (i18n)
+
+Поддерживаемые языки: `kk`, `ru`, `en`. Язык по умолчанию: `ru`.
+
+Приоритет выбора языка:
+1) Заголовок `X-Lang: kk|ru|en`
+2) Заголовок `Accept-Language` (например: `en-US,en;q=0.9,ru;q=0.8`)
+3) Фолбэк: `ru`
+
+Примеры:
+
+`curl -H "X-Lang: en" http://localhost:3000/does-not-exist`
+
+`curl -H "Accept-Language: kk-KZ,ru;q=0.8" http://localhost:3000/does-not-exist`
