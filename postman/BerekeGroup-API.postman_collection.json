@@ -123,6 +123,44 @@
           ]
         },
         {
+          "name": "Request OTP (unknown phone) - POST /api/auth/request-otp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{unknownPhone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/request-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "request-otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has wrapper fields', () => {",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});",
+                  "pm.test('Silent success', () => {",
+                  "  pm.expect(json.successful).to.eql(true);",
+                  "  pm.expect(json.data).to.have.property('sent', true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "No self-registration: unknown phones MUST NOT create DB records or send OTP. Backend returns a silent success response to avoid user enumeration."
+        },
+        {
           "name": "Login via OTP - POST /api/auth/login",
           "request": {
             "method": "POST",

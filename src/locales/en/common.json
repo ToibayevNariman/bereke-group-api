@@ -10,6 +10,7 @@
   },
   "auth": {
     "admin_password_required": "Admin login requires a password",
+    "user_not_found": "User not found",
     "otp_too_frequent": "OTP can be requested no more than once every {seconds} seconds",
     "too_many_attempts": "Too many attempts. Try again later",
     "otp_required": "OTP code is required",

@@ -91,6 +91,16 @@ export class AuthService {
       where: { phoneE164: phone }
     })
 
+    // No self-registration in the system: OTP is allowed only for phones that already exist in DB.
+    // For unknown phones we return a "silent" success without any side effects.
+    if (!existingIdentity || !(existingIdentity as any).userId) {
+      return {
+        needToUsePassword: false,
+        sent: true,
+        expiresIn: Math.floor(OTP_TTL_MS / 1000)
+      }
+    }
+
     const nowDate = now()
 
     if (existingIdentity?.lockedUntil && existingIdentity.lockedUntil > nowDate) {
@@ -108,26 +118,7 @@ export class AuthService {
       }
     }
 
-    // Schema requires AuthIdentity.userId, so we create a minimal User early.
     const identity = existingIdentity
-      ? existingIdentity
-      : await this.prisma.user
-          .create({
-            data: {
-              userType: UserType.CLIENT,
-              isActive: true
-            }
-          })
-          .then(async (user) => {
-            return await this.prisma.authIdentity.create({
-              data: {
-                userId: user.id,
-                phoneE164: phone,
-                isPrimary: true,
-                isVerified: false
-              }
-            })
-          })
 
     const expiresAt = new Date(nowDate.getTime() + OTP_TTL_MS)
     const codeHash = sha256Hex(OTP_CODE_MOCK)
@@ -237,9 +228,9 @@ export class AuthService {
       where: { phoneE164: phone }
     })
 
-    if (!identity) {
-      const err: any = new Error('OTP_NOT_REQUESTED')
-      err.statusCode = 400
+    if (!identity || !(identity as any).userId) {
+      const err: any = new Error('USER_NOT_FOUND')
+      err.statusCode = 404
       throw err
     }
 
@@ -312,8 +303,8 @@ export class AuthService {
     })
 
     if (!user) {
-      const err: any = new Error('INTERNAL_USER_NOT_FOUND')
-      err.statusCode = 500
+      const err: any = new Error('USER_NOT_FOUND')
+      err.statusCode = 404
       throw err
     }
 

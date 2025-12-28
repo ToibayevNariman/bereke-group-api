@@ -88,6 +88,11 @@ export function loginHandler(auth: AuthService) {
         return
       }
 
+      if (err?.message === 'USER_NOT_FOUND') {
+        sendError(reply, 404, 'USER_NOT_FOUND', request.t('auth.user_not_found'))
+        return
+      }
+
       if (err?.message === 'INVALID_CREDENTIALS') {
         sendError(reply, 401, 'INVALID_CREDENTIALS', request.t('auth.invalid_credentials'))
         return
