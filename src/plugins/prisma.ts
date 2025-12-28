@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { PrismaClient } from '@prisma/client'
+import { getPrismaClient } from '../common/prisma'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -16,10 +17,14 @@ export default fp(async (fastify) => {
     return
   }
 
-  const prisma = new PrismaClient()
+  const prisma = getPrismaClient()
   fastify.decorate('prisma', prisma)
 
   fastify.addHook('onClose', async (instance) => {
-    await instance.prisma?.$disconnect()
+    try {
+      await instance.prisma?.$disconnect()
+    } catch (err) {
+      instance.log.warn({ err }, 'Failed to disconnect Prisma cleanly')
+    }
   })
 })

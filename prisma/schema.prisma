@@ -7,9 +7,218 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
+enum UserType {
+  CLIENT
+  EMPLOYEE
+  SYSTEM_ADMIN
 }
+
+enum EmployeeStatus {
+  WORKING
+  NOT_WORKING
+}
+
+enum IdentityType {
+  PHONE
+}
+
+enum OtpChannel {
+  SMS
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  LOCKED
+  CANCELED
+}
+
+enum RefreshStatus {
+  ACTIVE
+  REVOKED
+  ROTATED
+  EXPIRED
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  userType  UserType
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile              PersonProfile?
+  client               Client?
+  employee             Employee?
+  systemAdminCredential SystemAdminCredential?
+
+  identities    AuthIdentity[]
+  roles         UserRole[]
+  refreshTokens RefreshToken[]
+
+  // Optional backlink for role assignment audit
+  assignedRoles UserRole[] @relation("AssignedByUser")
+}
+
+model PersonProfile {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @unique @db.Uuid
+  lastName   String
+  firstName  String
+  middleName String?
+  iin        String   @unique @db.Char(12)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Employee {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @unique @db.Uuid
+  hireDate  DateTime
+  fireDate  DateTime?
+  status    EmployeeStatus @default(WORKING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users UserRole[]
+}
+
+model UserRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  roleId      String   @db.Uuid
+  assignedAt  DateTime @default(now())
+  assignedById String? @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedByUser User? @relation("AssignedByUser", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model AuthIdentity {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  identityType  IdentityType @default(PHONE)
+  phoneE164     String       @unique @db.VarChar(20)
+  failedAttempts Int         @default(0)
+  lockedUntil   DateTime?
+  lastOtpSentAt DateTime?
+  isPrimary     Boolean      @default(true)
+  isVerified    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenges OtpChallenge[]
+
+  @@index([userId, lockedUntil])
+}
+
+model OtpChallenge {
+  id             String     @id @default(uuid()) @db.Uuid
+  identityId     String     @db.Uuid
+  channel        OtpChannel @default(SMS)
+  codeHash       String
+  expiresAt      DateTime
+  status         OtpStatus  @default(PENDING)
+  verifyAttempts Int        @default(0)
+  maxAttempts    Int        @default(5)
+  requestIp      String?    @db.VarChar(45)
+  userAgent      String?    @db.VarChar(512)
+  createdAt      DateTime   @default(now())
+  verifiedAt     DateTime?
+
+  identity AuthIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  attempts OtpAttempt[]
+
+  @@index([identityId, expiresAt, status])
+}
+
+model OtpAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  challengeId String   @db.Uuid
+  attemptedAt DateTime @default(now())
+  ip          String?  @db.VarChar(45)
+  isSuccess   Boolean
+  reason      String?  @db.VarChar(64)
+
+  challenge OtpChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId, attemptedAt])
+}
+
+model RefreshToken {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @db.Uuid
+  tokenHash    String        @unique
+  status       RefreshStatus @default(ACTIVE)
+  issuedAt     DateTime      @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  rotatedToId  String? @unique @db.Uuid
+  replacedById String? @unique @db.Uuid
+
+  ip        String? @db.VarChar(45)
+  userAgent String? @db.VarChar(512)
+  deviceId  String? @db.VarChar(128)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rotatedTo   RefreshToken? @relation("RefreshRotatedTo", fields: [rotatedToId], references: [id], onDelete: SetNull)
+  rotatedFrom RefreshToken? @relation("RefreshRotatedTo")
+
+  replacedBy RefreshToken? @relation("RefreshReplacedBy", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   RefreshToken? @relation("RefreshReplacedBy")
+
+  @@index([userId, expiresAt, status])
+}
+
+model SystemAdminCredential {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  passwordHash      String
+  passwordUpdatedAt DateTime @default(now())
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AppSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// NOTE: "Only one SYSTEM_ADMIN" is not reliably enforceable purely with Prisma schema.
+// Seed ensures at most one SYSTEM_ADMIN user is created; application code should enforce this rule.

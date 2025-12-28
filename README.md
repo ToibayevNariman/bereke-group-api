@@ -1,49 +1,86 @@
-# Getting Started with [Fastify-CLI](https://www.npmjs.com/package/fastify-cli)
-This project was bootstrapped with Fastify-CLI.
+# Быстрый старт (Fastify)
+Проект создан с помощью [Fastify-CLI](https://www.npmjs.com/package/fastify-cli).
 
-## Available Scripts
+## Первый запуск (локально)
 
-In the project directory, you can run:
+### 1) Подготовить переменные окружения
 
-### `npm run dev`
-
-To start the app in dev mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-### `npm start`
-
-For production mode
-
-### `npm run test`
-
-Run the test cases.
-
-## Development Database (Postgres via Docker)
-
-1) Copy env template:
+Скопируйте шаблон env-файла:
 
 `cp .env.example .env`
 
-2) Start Postgres:
+Проверьте, что в `.env` задан `DATABASE_URL` (пример):
+
+`postgresql://postgres:postgres@localhost:5432/bereke_group_dev?schema=public`
+
+### 2) Поднять PostgreSQL (Docker)
 
 `docker compose up -d`
 
-The database will be available on `localhost:${POSTGRES_PORT}` (default `5432`).
+База будет доступна на `localhost:${POSTGRES_PORT}` (по умолчанию `5432`).
 
-## Prisma
-
-- Generate client:
+### 3) Prisma: сгенерировать клиент, применить миграции, выполнить seed
 
 `npm run prisma:generate`
 
-- Create/apply dev migration:
+`npm run db:migrate`
+
+`npm run db:seed`
+
+### 4) Запустить приложение
+
+`npm run dev`
+
+По умолчанию сервер доступен на [http://localhost:3000](http://localhost:3000).
+
+## Доступные команды
+
+В папке проекта доступны команды:
+
+### `npm run dev`
+
+Запуск приложения в dev-режиме.
+
+### `npm start`
+
+Запуск в production-режиме.
+
+### `npm run test`
+
+Запуск тестов.
+
+## База данных (Postgres через Docker)
+
+`docker compose up -d`
+
+База будет доступна на `localhost:${POSTGRES_PORT}` (по умолчанию `5432`).
+
+## Prisma
+
+- Сгенерировать Prisma Client:
+
+`npm run prisma:generate`
+
+- Создать/применить dev-миграции:
 
 `npm run prisma:migrate`
 
-- Open Prisma Studio:
+- Открыть Prisma Studio:
 
 `npm run prisma:studio`
 
-## Learn More
+- Применить миграции (dev):
 
-To learn Fastify, check out the [Fastify documentation](https://fastify.dev/docs/latest/).
+`npm run db:migrate`
+
+- Выполнить seed:
+
+`npm run db:seed`
+
+Убедитесь, что `DATABASE_URL` задан (пример):
+
+`postgresql://postgres:postgres@localhost:5432/bereke_group_dev?schema=public`
+
+## Полезные ссылки
+
+Документация Fastify: [https://fastify.dev/docs/latest/](https://fastify.dev/docs/latest/)
