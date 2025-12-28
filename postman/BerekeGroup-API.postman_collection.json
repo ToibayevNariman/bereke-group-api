@@ -1,0 +1,221 @@
+{
+  "info": {
+    "_postman_id": "b65c6f0c-8db0-4d3c-9c1f-b5a1b76f9c2f",
+    "name": "Bereke Group API",
+    "description": "Fastify API. JSON-only responses with { successful, data, error }. Includes health + auth (mock OTP=123456, admin login via password).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global pre-request: set common headers",
+          "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });",
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });",
+          "",
+          "// Language header (mobile priority). Values: ru|en|kk",
+          "const lang = pm.environment.get('lang') || 'ru';",
+          "pm.request.headers.upsert({ key: 'X-Lang', value: lang });",
+          "",
+          "// Bearer token (if set)",
+          "const token = pm.environment.get('accessToken');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": { "type": "text/javascript", "exec": [] }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness - GET /health/live",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health/live", "host": ["{{baseUrl}}"], "path": ["health", "live"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has successful=true', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('successful', true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Readiness - GET /health/ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health/ready", "host": ["{{baseUrl}}"], "path": ["health", "ready"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 503', () => pm.expect([200, 503]).to.include(pm.response.code));",
+                  "pm.test('Has successful field', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Request OTP - POST /api/auth/request-otp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{phone}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/request-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "request-otp"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 4xx', () => pm.expect(pm.response.code).to.be.oneOf([200, 201, 400, 401, 403, 409, 429]));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has wrapper fields', () => {",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});",
+                  "",
+                  "// Note: mock OTP is always 123456 on backend, but we do NOT expect it in response."
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login via OTP - POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{phone}}\",\n  \"otp\": \"{{otp}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Wrapper exists', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "if (json.successful && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "  pm.test('Access token saved to env', () => pm.expect(pm.environment.get('accessToken')).to.be.a('string'));",
+                  "} else {",
+                  "  pm.test('Login failed (expected in some cases)', () => pm.expect(json.successful).to.eql(false));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as System Admin (password) - POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{adminLogin}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Wrapper exists', () => {",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});",
+                  "",
+                  "if (json.successful && json.data && json.data.accessToken) {",
+                  "  pm.environment.set('accessToken', json.data.accessToken);",
+                  "}",
+                  "pm.test('If success then token present', () => {",
+                  "  if (json.successful) pm.expect(json.data.accessToken).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Clear token (local)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/__postman__/clear-token", "host": ["{{baseUrl}}"], "path": ["__postman__", "clear-token"] }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// This request is a Postman-only helper. It does not call backend.",
+                  "pm.environment.unset('accessToken');",
+                  "postman.setNextRequest(null);"
+                ]
+              }
+            }
+          ],
+          "description": "This is a helper request to clear accessToken in Postman env. It does not hit backend."
+        }
+      ]
+    }
+  ]
+}
