@@ -24,11 +24,11 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 const healthRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
-  fastify.get('/health/live', async (request, reply) => {
+  const liveHandler = async (_request: any, reply: any) => {
     sendOk(reply, { status: 'alive', timestamp: isoNow() })
-  })
+  }
 
-  fastify.get('/health/ready', async (request, reply) => {
+  const readyHandler = async (request: any, reply: any) => {
     const prisma = fastify.prisma
 
     if (!prisma) {
@@ -43,7 +43,13 @@ const healthRoutes: FastifyPluginAsync = async (fastify): Promise<void> => {
       request.log.error({ err }, 'Readiness check failed')
       sendError(reply, 503, 'DB_NOT_READY', 'Database is not reachable')
     }
-  })
+  }
+
+  fastify.get('/health/live', liveHandler)
+  fastify.get('/api/health/live', liveHandler)
+
+  fastify.get('/health/ready', readyHandler)
+  fastify.get('/api/health/ready', readyHandler)
 }
 
 export default healthRoutes
