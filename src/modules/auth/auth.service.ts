@@ -18,10 +18,9 @@ import { sendOtpMock } from './sms.provider'
 
 export type Translator = (key: string, params?: Record<string, any>) => string
 
-export type RequestOtpResult = {
-  sent: true
-  expiresIn: number
-}
+export type RequestOtpResult =
+  | { needToUsePassword: true }
+  | { needToUsePassword: false; sent: true; expiresIn: number }
 
 export type LoginSuccessResult = {
   accessToken: string
@@ -85,9 +84,7 @@ export class AuthService {
     const phone = normalizePhoneE164(input.login)
 
     if (phone === ADMIN_LOGIN) {
-      const err: any = new Error('ADMIN_PASSWORD_REQUIRED')
-      err.statusCode = 400
-      throw err
+      return { needToUsePassword: true }
     }
 
     const existingIdentity = await this.prisma.authIdentity.findUnique({
@@ -156,7 +153,7 @@ export class AuthService {
 
     await sendOtpMock(this.logger, phone, OTP_CODE_MOCK)
 
-    return { sent: true, expiresIn: Math.floor(OTP_TTL_MS / 1000) }
+    return { needToUsePassword: false, sent: true, expiresIn: Math.floor(OTP_TTL_MS / 1000) }
   }
 
   async loginWithAdminPassword(input: {

@@ -30,11 +30,6 @@ export function requestOtpHandler(auth: AuthService) {
     } catch (err: any) {
       const status = typeof err?.statusCode === 'number' ? err.statusCode : 500
 
-      if (err?.message === 'ADMIN_PASSWORD_REQUIRED') {
-        sendError(reply, 400, 'ADMIN_PASSWORD_REQUIRED', request.t('auth.admin_password_required'))
-        return
-      }
-
       if (err?.message === 'OTP_TOO_FREQUENT') {
         sendError(reply, 429, 'OTP_TOO_FREQUENT', request.t('auth.otp_too_frequent', { seconds: 30 }))
         return
