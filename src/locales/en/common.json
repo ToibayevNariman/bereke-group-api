@@ -7,5 +7,16 @@
     "not_found": "Route not found",
     "too_many_requests": "Too many requests",
     "bad_request": "Bad request"
+  },
+  "auth": {
+    "admin_password_required": "Admin login requires a password",
+    "otp_too_frequent": "OTP can be requested no more than once every {seconds} seconds",
+    "too_many_attempts": "Too many attempts. Try again later",
+    "otp_required": "OTP code is required",
+    "otp_not_requested": "Request an OTP first",
+    "otp_invalid": "Invalid OTP code",
+    "invalid_credentials": "Invalid credentials",
+    "jwt_not_configured": "Authentication service is not configured",
+    "admin_not_configured": "System admin account is not configured"
   }
 }

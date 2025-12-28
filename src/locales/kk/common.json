@@ -7,5 +7,16 @@
     "not_found": "Маршрут табылмады",
     "too_many_requests": "Тым көп сұрау жасалды",
     "bad_request": "Қате сұрау"
+  },
+  "auth": {
+    "admin_password_required": "Әкімші ретінде кіру үшін құпиясөз қажет",
+    "otp_too_frequent": "Кодты {seconds} секундта бір реттен жиі сұрауға болмайды",
+    "too_many_attempts": "Тым көп әрекет. Кейінірек қайталап көріңіз",
+    "otp_required": "Бір реттік код қажет",
+    "otp_not_requested": "Алдымен бір реттік кодты сұратыңыз",
+    "otp_invalid": "Бір реттік код қате",
+    "invalid_credentials": "Деректер дұрыс емес",
+    "jwt_not_configured": "Аутентификация қызметі бапталмаған",
+    "admin_not_configured": "Жүйелік әкімші тіркелгісі бапталмаған"
   }
 }

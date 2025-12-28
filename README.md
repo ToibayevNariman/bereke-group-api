@@ -99,3 +99,21 @@
 `curl -H "X-Lang: en" http://localhost:3000/does-not-exist`
 
 `curl -H "Accept-Language: kk-KZ,ru;q=0.8" http://localhost:3000/does-not-exist`
+
+## Auth (SMS OTP + System Admin)
+
+Требуется переменная окружения `JWT_SECRET` для выдачи access token.
+
+Примеры (mock OTP = `123456`):
+
+Запросить OTP:
+
+`curl -X POST http://localhost:3000/api/auth/request-otp -H "Content-Type: application/json" -d "{\"login\":\"+77001234567\"}"`
+
+Логин по OTP:
+
+`curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d "{\"login\":\"+77001234567\",\"otp\":\"123456\"}"`
+
+System admin логин (только пароль):
+
+`curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d "{\"login\":\"+70000000000\",\"password\":\"CHANGE_ME\"}"`
