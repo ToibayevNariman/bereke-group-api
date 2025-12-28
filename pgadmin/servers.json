@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "bereke-group-postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "bereke_group_dev",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
