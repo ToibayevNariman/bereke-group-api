@@ -65,9 +65,107 @@ async function seedSystemAdmin(): Promise<void> {
   })
 }
 
+async function seedFirstEmployeeAdmin(): Promise<void> {
+  const phoneE164 = '+77051509977'
+
+  const placeholderIin = '890915301135'
+
+  const adminRole = await prisma.role.findUnique({ where: { code: 'ADMIN' } })
+  if (!adminRole) {
+    throw new Error('Role ADMIN is missing. Seed roles first.')
+  }
+
+  const existingIdentity = await prisma.authIdentity.findUnique({
+    where: { phoneE164 }
+  })
+
+  const hireDate = new Date('2018-01-01T00:00:00.000Z')
+
+  if (!existingIdentity) {
+    const user = await prisma.user.create({
+      data: {
+        userType: UserType.EMPLOYEE,
+        isActive: true,
+        profile: {
+          create: {
+            lastName: 'Тойбаев',
+            firstName: 'Нариман',
+            middleName: 'Болатович',
+            iin: placeholderIin
+          }
+        },
+        employee: {
+          create: {
+            hireDate
+          }
+        },
+        identities: {
+          create: {
+            phoneE164,
+            isPrimary: true,
+            isVerified: true
+          }
+        }
+      }
+    })
+
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: user.id, roleId: adminRole.id } },
+      update: {},
+      create: { userId: user.id, roleId: adminRole.id }
+    })
+
+    return
+  }
+
+  // If the identity exists, ensure the linked user has employee record and ADMIN role.
+  const userId = existingIdentity.userId
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      userType: UserType.EMPLOYEE,
+      isActive: true,
+      employee: {
+        upsert: {
+          update: { hireDate },
+          create: { hireDate }
+        }
+      },
+      profile: {
+        upsert: {
+          update: {
+            lastName: 'Тойбаев',
+            firstName: 'Нариман',
+            middleName: 'Болатович'
+          },
+          create: {
+            lastName: 'Тойбаев',
+            firstName: 'Нариман',
+            middleName: 'Болатович',
+            iin: placeholderIin
+          }
+        }
+      }
+    }
+  })
+
+  await prisma.authIdentity.update({
+    where: { id: existingIdentity.id },
+    data: { isVerified: true, isPrimary: true }
+  })
+
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId, roleId: adminRole.id } },
+    update: {},
+    create: { userId, roleId: adminRole.id }
+  })
+}
+
 async function main(): Promise<void> {
   await seedRoles()
   await seedSystemAdmin()
+  await seedFirstEmployeeAdmin()
 }
 
 main()
