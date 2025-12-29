@@ -77,6 +77,21 @@
 
 `npm run db:seed`
 
+## Project Catalog (DB)
+
+ВАЖНО: таблица `projects` зарезервирована под домен "активные проекты" (исполнение).
+Каталог проектов использует таблицы `ProjectsCatalog*` (PascalCase).
+
+Команды Prisma:
+
+- Создать/применить миграции:
+
+`npx prisma migrate dev`
+
+- Выполнить seed (словари каталога: стили/материалы/строительные материалы + ru/kk/en):
+
+`npx prisma db seed`
+
 Убедитесь, что `DATABASE_URL` задан (пример):
 
 `postgresql://postgres:postgres@localhost:5432/bereke_group_dev?schema=public`

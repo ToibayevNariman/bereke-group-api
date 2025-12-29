@@ -1,4 +1,4 @@
-import { PrismaClient, UserType } from '@prisma/client'
+import { Locale, PrismaClient, UserType } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -10,6 +10,103 @@ const ROLE_SEED = [
   { code: 'SITE_MANAGER', name: 'Site manager', description: 'Site management access' },
   { code: 'SENIOR_ON_SITE', name: 'Senior on site', description: 'Senior on-site access' },
   { code: 'PROCUREMENT', name: 'Procurement', description: 'Procurement access' }
+] as const
+
+const CATALOG_STYLE_SEED = [
+  {
+    code: 'MODERN',
+    translations: {
+      ru: 'Современный',
+      kk: 'Заманауи',
+      en: 'Modern'
+    }
+  },
+  {
+    code: 'MINIMALISM',
+    translations: {
+      ru: 'Минимализм',
+      kk: 'Минимализм',
+      en: 'Minimalism'
+    }
+  }
+] as const
+
+const CATALOG_MATERIAL_SEED = [
+  {
+    code: 'MONOLITH',
+    translations: {
+      ru: 'Монолит',
+      kk: 'Монолит',
+      en: 'Monolith'
+    }
+  },
+  {
+    code: 'BRICK',
+    translations: {
+      ru: 'Кирпич',
+      kk: 'Кірпіш',
+      en: 'Brick'
+    }
+  },
+  {
+    code: 'AAC',
+    translations: {
+      ru: 'Газоблок',
+      kk: 'Газоблок',
+      en: 'AAC block'
+    }
+  }
+] as const
+
+const CONSTRUCTION_MATERIAL_SEED = [
+  {
+    code: 'FOUNDATION',
+    translations: {
+      ru: 'Фундамент',
+      kk: 'Іргетас',
+      en: 'Foundation'
+    }
+  },
+  {
+    code: 'WALLS',
+    translations: {
+      ru: 'Стены',
+      kk: 'Қабырғалар',
+      en: 'Walls'
+    }
+  },
+  {
+    code: 'SLAB',
+    translations: {
+      ru: 'Плита перекрытия',
+      kk: 'Қабатаралық плита',
+      en: 'Slab'
+    }
+  },
+  {
+    code: 'ROOF',
+    translations: {
+      ru: 'Кровля',
+      kk: 'Шатыр',
+      en: 'Roof'
+    }
+  },
+  {
+    code: 'FACADE',
+    translations: {
+      ru: 'Фасад',
+      kk: 'Қасбет',
+      en: 'Facade'
+    }
+  },
+  {
+    code: 'WINDOWS',
+    translations: {
+      ru: 'Окна',
+      kk: 'Терезелер',
+      en: 'Windows'
+    }
+  }
 ] as const
 
 async function seedRoles(): Promise<void> {
@@ -63,6 +160,61 @@ async function seedSystemAdmin(): Promise<void> {
     update: { value: user.id },
     create: { key: 'SYSTEM_ADMIN_USER_ID', value: user.id }
   })
+}
+
+async function seedProjectCatalogDictionaries(): Promise<void> {
+  const locales: Locale[] = [Locale.ru, Locale.kk, Locale.en]
+
+  for (const item of CATALOG_STYLE_SEED) {
+    const style = await prisma.projectsCatalogStyle.upsert({
+      where: { code: item.code },
+      update: {},
+      create: { code: item.code }
+    })
+
+    for (const locale of locales) {
+      const name = item.translations[locale]
+      await prisma.projectsCatalogStyleTranslation.upsert({
+        where: { styleId_locale: { styleId: style.id, locale } },
+        update: { name },
+        create: { styleId: style.id, locale, name }
+      })
+    }
+  }
+
+  for (const item of CATALOG_MATERIAL_SEED) {
+    const material = await prisma.projectsCatalogMaterial.upsert({
+      where: { code: item.code },
+      update: {},
+      create: { code: item.code }
+    })
+
+    for (const locale of locales) {
+      const name = item.translations[locale]
+      await prisma.projectsCatalogMaterialTranslation.upsert({
+        where: { materialId_locale: { materialId: material.id, locale } },
+        update: { name },
+        create: { materialId: material.id, locale, name }
+      })
+    }
+  }
+
+  for (const item of CONSTRUCTION_MATERIAL_SEED) {
+    const material = await prisma.projectsCatalogConstructionMaterial.upsert({
+      where: { code: item.code },
+      update: { isActive: true },
+      create: { code: item.code, isActive: true }
+    })
+
+    for (const locale of locales) {
+      const name = item.translations[locale]
+      await prisma.projectsCatalogConstructionMaterialTranslation.upsert({
+        where: { materialId_locale: { materialId: material.id, locale } },
+        update: { name },
+        create: { materialId: material.id, locale, name }
+      })
+    }
+  }
 }
 
 async function seedFirstEmployeeAdmin(): Promise<void> {
@@ -166,6 +318,7 @@ async function main(): Promise<void> {
   await seedRoles()
   await seedSystemAdmin()
   await seedFirstEmployeeAdmin()
+  await seedProjectCatalogDictionaries()
 }
 
 main()

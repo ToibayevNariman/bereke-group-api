@@ -220,5 +220,236 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
+// -----------------------------
+// Project Catalog
+// NOTE: Table name `projects` is reserved for the execution domain.
+
+enum Locale {
+  ru
+  kk
+  en
+}
+
+enum CatalogProjectStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CatalogMediaType {
+  GALLERY_IMAGE
+  FLOOR_PLAN
+  FACADE
+  VIDEO_THUMBNAIL
+  VIDEO_FILE
+}
+
+enum CatalogBulletType {
+  STRUCTURAL_CONCEPT
+  WHO_FOR
+  PRICE_INCLUDES
+}
+
+model ProjectsCatalog {
+  id            String               @id @default(uuid()) @db.Uuid
+  code          String               @unique
+  status        CatalogProjectStatus
+  featured      Boolean              @default(false)
+  areaM2        Decimal              @db.Decimal(10, 2) @map("area_m2")
+  floors        Int
+  bedrooms      Int?
+  priceAmount   BigInt               @map("price_amount")
+  priceCurrency String               @db.Char(3) @default("KZT") @map("price_currency")
+  styleId       String?              @db.Uuid @map("style_id")
+  materialId    String?              @db.Uuid @map("material_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  style         ProjectsCatalogStyle?        @relation(fields: [styleId], references: [id], onDelete: SetNull)
+  material      ProjectsCatalogMaterial?     @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  translations  ProjectsCatalogTranslation[]
+  media         ProjectsCatalogMedia[]
+  bullets       ProjectsCatalogBullet[]
+  materials     ProjectsCatalogProjectConstructionMaterial[]
+
+  @@index([status])
+  @@index([featured])
+  @@index([floors])
+  @@index([areaM2])
+  @@index([priceAmount])
+  @@index([styleId])
+  @@index([materialId])
+  @@map("ProjectsCatalog")
+}
+
+model ProjectsCatalogTranslation {
+  id                         String   @id @default(uuid()) @db.Uuid
+  projectId                  String   @db.Uuid @map("project_id")
+  locale                     Locale
+  name                       String
+  characteristics            String
+  description                String
+  implementationText         String   @map("implementation_text")
+  timelineDesignPhaseValue   String   @map("timeline_design_phase_value")
+  timelineConstructionValue  String   @map("timeline_construction_value")
+  timelineFullCycleValue     String   @map("timeline_full_cycle_value")
+  videoTitle                 String?  @map("video_title")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  project ProjectsCatalog @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, locale])
+  @@index([locale])
+  @@map("ProjectsCatalogTranslation")
+}
+
+model ProjectsCatalogStyle {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations ProjectsCatalogStyleTranslation[]
+  projects     ProjectsCatalog[]
+
+  @@map("ProjectsCatalogStyle")
+}
+
+model ProjectsCatalogStyleTranslation {
+  id        String   @id @default(uuid()) @db.Uuid
+  styleId   String   @db.Uuid @map("style_id")
+  locale    Locale
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  style ProjectsCatalogStyle @relation(fields: [styleId], references: [id], onDelete: Cascade)
+
+  @@unique([styleId, locale])
+  @@index([locale])
+  @@map("ProjectsCatalogStyleTranslation")
+}
+
+model ProjectsCatalogMaterial {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations ProjectsCatalogMaterialTranslation[]
+  projects     ProjectsCatalog[]
+
+  @@map("ProjectsCatalogMaterial")
+}
+
+model ProjectsCatalogMaterialTranslation {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @db.Uuid @map("material_id")
+  locale     Locale
+  name       String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  material ProjectsCatalogMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, locale])
+  @@index([locale])
+  @@map("ProjectsCatalogMaterialTranslation")
+}
+
+model ProjectsCatalogConstructionMaterial {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  translations ProjectsCatalogConstructionMaterialTranslation[]
+  projects     ProjectsCatalogProjectConstructionMaterial[]
+
+  @@map("ProjectsCatalogConstructionMaterial")
+}
+
+model ProjectsCatalogConstructionMaterialTranslation {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @db.Uuid @map("material_id")
+  locale     Locale
+  name       String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  material ProjectsCatalogConstructionMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, locale])
+  @@index([locale])
+  @@map("ProjectsCatalogConstructionMaterialTranslation")
+}
+
+model ProjectsCatalogProjectConstructionMaterial {
+  id        String @id @default(uuid()) @db.Uuid
+  projectId String @db.Uuid @map("project_id")
+  materialId String @db.Uuid @map("material_id")
+  sortOrder Int @default(0) @map("sort_order")
+
+  project  ProjectsCatalog                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  material ProjectsCatalogConstructionMaterial  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, materialId])
+  @@index([projectId, sortOrder])
+  @@index([materialId])
+  @@map("ProjectsCatalogProjectConstructionMaterial")
+}
+
+model ProjectsCatalogMedia {
+  id              String          @id @default(uuid()) @db.Uuid
+  projectId        String          @db.Uuid @map("project_id")
+  type            CatalogMediaType
+  url             String
+  sortOrder       Int             @default(0) @map("sort_order")
+  title           String?
+  durationSeconds Int?            @map("duration_seconds")
+  isCover         Boolean         @default(false) @map("is_cover")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  project ProjectsCatalog @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, type])
+  @@index([type])
+  @@index([projectId, type, sortOrder])
+  @@map("ProjectsCatalogMedia")
+}
+
+model ProjectsCatalogBullet {
+  id        String            @id @default(uuid()) @db.Uuid
+  projectId String            @db.Uuid @map("project_id")
+  type      CatalogBulletType
+  sortOrder Int               @default(0) @map("sort_order")
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  project      ProjectsCatalog                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  translations ProjectsCatalogBulletTranslation[]
+
+  @@index([projectId, type])
+  @@index([projectId, type, sortOrder])
+  @@map("ProjectsCatalogBullet")
+}
+
+model ProjectsCatalogBulletTranslation {
+  id       String @id @default(uuid()) @db.Uuid
+  bulletId String @db.Uuid @map("bullet_id")
+  locale   Locale
+  text     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bullet ProjectsCatalogBullet @relation(fields: [bulletId], references: [id], onDelete: Cascade)
+
+  @@unique([bulletId, locale])
+  @@index([locale])
+  @@map("ProjectsCatalogBulletTranslation")
+}
+
 // NOTE: "Only one SYSTEM_ADMIN" is not reliably enforceable purely with Prisma schema.
 // Seed ensures at most one SYSTEM_ADMIN user is created; application code should enforce this rule.
