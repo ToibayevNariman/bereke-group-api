@@ -255,6 +255,7 @@ model ProjectsCatalog {
   code          String               @unique
   status        CatalogProjectStatus
   featured      Boolean              @default(false)
+  showOnHome    Boolean              @default(false) @map("show_on_home")
   areaM2        Decimal              @db.Decimal(10, 2) @map("area_m2")
   floors        Int
   bedrooms      Int?
@@ -274,6 +275,7 @@ model ProjectsCatalog {
 
   @@index([status])
   @@index([featured])
+  @@index([showOnHome])
   @@index([floors])
   @@index([areaM2])
   @@index([priceAmount])

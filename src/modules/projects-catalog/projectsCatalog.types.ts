@@ -38,8 +38,17 @@ export type ApiProjectsProject = {
   characteristics: string
   details?: ApiProjectsProjectDetails
   featured?: boolean
+  showOnHome?: boolean
 }
 
 export type ApiProjectsResponse = {
   projects: ApiProjectsProject[]
+}
+
+export type ApiProjectsProjectSummary = Omit<ApiProjectsProject, 'details'> & {
+  details?: never
+}
+
+export type ApiProjectsHomeResponse = {
+  projects: ApiProjectsProjectSummary[]
 }

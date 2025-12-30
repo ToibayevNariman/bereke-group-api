@@ -30,9 +30,39 @@ test('GET /api/projects-catalog returns wrapper + projects', async (t) => {
       assert.equal(typeof p.style, 'string')
       assert.equal(typeof p.material, 'string')
       assert.equal(typeof p.price, 'number')
+      assert.equal(typeof p.showOnHome, 'boolean')
       assert.ok(p.details)
       assert.equal(typeof p.details.description, 'string')
       assert.ok(Array.isArray(p.details.structuralConceptBullets))
+    }
+  } else {
+    assert.equal(json.successful, false)
+  }
+})
+
+test('GET /api/projects-catalog/home returns short list (no details) with showOnHome=true', async (t) => {
+  const app = await build(t)
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/api/projects-catalog/home'
+  })
+
+  assert.ok([200, 503].includes(res.statusCode))
+
+  const json = res.json()
+  assert.equal(typeof json.successful, 'boolean')
+  assert.ok('data' in json)
+  assert.ok('error' in json)
+
+  if (res.statusCode === 200) {
+    assert.equal(json.successful, true)
+    assert.ok(json.data)
+    assert.ok(Array.isArray(json.data.projects))
+
+    for (const p of json.data.projects) {
+      assert.equal(p.showOnHome, true)
+      assert.equal('details' in p, false)
     }
   } else {
     assert.equal(json.successful, false)

@@ -1,5 +1,10 @@
 import { PrismaClient, Prisma, Locale, CatalogBulletType, CatalogMediaType } from '@prisma/client'
-import type { ApiProjectsProject, ApiProjectsResponse } from './projectsCatalog.types'
+import type {
+  ApiProjectsHomeResponse,
+  ApiProjectsProject,
+  ApiProjectsProjectSummary,
+  ApiProjectsResponse
+} from './projectsCatalog.types'
 
 type ProjectWithIncludes = Prisma.ProjectsCatalogGetPayload<{
   include: {
@@ -81,6 +86,24 @@ function groupBulletsByType(
 export class ProjectsCatalogService {
   constructor(private readonly prisma: PrismaClient) {}
 
+  async getProjectsCatalogHome(locale: Locale): Promise<ApiProjectsHomeResponse> {
+    const projects = await this.prisma.projectsCatalog.findMany({
+      where: { status: 'PUBLISHED', showOnHome: true },
+      include: {
+        translations: { where: { locale } },
+        style: { include: { translations: { where: { locale } } } },
+        material: { include: { translations: { where: { locale } } } },
+        media: { orderBy: { sortOrder: 'asc' } }
+      }
+    })
+
+    const apiProjects: ApiProjectsProjectSummary[] = this.mapProjects(projects, locale, {
+      includeDetails: false
+    })
+
+    return { projects: apiProjects }
+  }
+
   async getProjectsCatalog(locale: Locale): Promise<ApiProjectsResponse> {
     const projects: ProjectWithIncludes[] = await this.prisma.projectsCatalog.findMany({
       where: { status: 'PUBLISHED' },
@@ -111,48 +134,81 @@ export class ProjectsCatalogService {
       return ai - bi
     })
 
-    const apiProjects: ApiProjectsProject[] = ordered.map((p, idx) => {
-      const tr = p.translations[0]
+    const apiProjects: ApiProjectsProject[] = this.mapProjects(ordered, locale, {
+      includeDetails: true
+    })
+
+    return { projects: apiProjects }
+  }
+
+  private mapProjects(
+    projects: Array<any>,
+    locale: Locale,
+    opts: { includeDetails: boolean }
+  ): Array<any> {
+    // stable order like frontend mock
+    const ordered = [...projects].sort((a, b) => {
+      const ai = projectOrderIndex.get(a.code) ?? 999
+      const bi = projectOrderIndex.get(b.code) ?? 999
+      return ai - bi
+    })
+
+    return ordered.map((p, idx) => {
+      const tr = p.translations?.[0]
       const styleName = p.style?.translations?.[0]?.name ?? p.style?.code ?? ''
       const materialName = p.material?.translations?.[0]?.name ?? p.material?.code ?? ''
 
-      const gallery = p.media
-        .filter((m) => m.type === CatalogMediaType.GALLERY_IMAGE)
-        .sort((a, b) => (a.isCover === b.isCover ? a.sortOrder - b.sortOrder : a.isCover ? -1 : 1))
+      const gallery = (p.media ?? [])
+        .filter((m: any) => m.type === CatalogMediaType.GALLERY_IMAGE)
+        .sort((a: any, b: any) =>
+          a.isCover === b.isCover ? a.sortOrder - b.sortOrder : a.isCover ? -1 : 1
+        )
 
-      const floorPlans = p.media
-        .filter((m) => m.type === CatalogMediaType.FLOOR_PLAN)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-
-      const facades = p.media
-        .filter((m) => m.type === CatalogMediaType.FACADE)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-
-      const videoThumb = p.media.find((m) => m.type === CatalogMediaType.VIDEO_THUMBNAIL)
-
-      const bulletRows = p.bullets.flatMap((b) => {
-        const text = b.translations[0]?.text
-        if (!text) return []
-        return [{ type: b.type, sortOrder: b.sortOrder, text }]
-      })
-      const grouped = groupBulletsByType(bulletRows)
-
-      const constructionMaterials = p.materials.map((pm) => {
-        const code = pm.material.code
-        const value = pm.material.translations[0]?.name ?? code
-        return { id: constructionMaterialIdFromCode(code), value }
-      })
-
-      return {
+      const base = {
         id: String(idx + 1),
         name: tr?.name ?? p.code,
-        images: gallery.map((m) => m.url),
+        images: gallery.map((m: any) => m.url),
         style: styleName,
         area: Number(p.areaM2),
         floors: p.floors,
         material: materialName,
         price: Number(p.priceAmount),
         characteristics: tr?.characteristics ?? '',
+        featured: p.featured,
+        showOnHome: p.showOnHome
+      } satisfies Omit<ApiProjectsProject, 'details'>
+
+      if (!opts.includeDetails) {
+        return base satisfies ApiProjectsProjectSummary
+      }
+
+      const floorPlans = (p.media ?? [])
+        .filter((m: any) => m.type === CatalogMediaType.FLOOR_PLAN)
+        .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+
+      const facades = (p.media ?? [])
+        .filter((m: any) => m.type === CatalogMediaType.FACADE)
+        .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+
+      const videoThumb = (p.media ?? []).find(
+        (m: any) => m.type === CatalogMediaType.VIDEO_THUMBNAIL
+      )
+
+      const bulletRows = (p.bullets ?? []).flatMap((b: any) => {
+        const text = b.translations?.[0]?.text
+        if (!text) return []
+        return [{ type: b.type, sortOrder: b.sortOrder, text }]
+      })
+      const grouped = groupBulletsByType(bulletRows)
+
+      const constructionMaterials = (p.materials ?? []).map((pm: any) => {
+        const code = pm.material.code
+        const value = pm.material.translations?.[0]?.name ?? code
+        return { id: constructionMaterialIdFromCode(code), value }
+      })
+
+      return {
+        ...base,
         details: {
           bedrooms: p.bedrooms ?? 0,
           description: tr?.description ?? '',
@@ -165,12 +221,12 @@ export class ProjectsCatalogService {
             fullCycleValue: tr?.timelineFullCycleValue ?? ''
           },
           priceIncludesBullets: grouped.PRICE_INCLUDES,
-          floorPlans: floorPlans.map((m, i) => ({
+          floorPlans: floorPlans.map((m: any, i: number) => ({
             id: String(i + 1),
             url: m.url,
             title: titleByLocale(locale, 'floorPlan', i)
           })),
-          facades: facades.map((m, i) => ({
+          facades: facades.map((m: any, i: number) => ({
             id: String(i + 1),
             url: m.url,
             title: titleByLocale(locale, 'facade', i)
@@ -181,11 +237,8 @@ export class ProjectsCatalogService {
             title: tr?.videoTitle ?? ''
           },
           implementationText: tr?.implementationText ?? ''
-        },
-        featured: p.featured
-      }
+        }
+      } satisfies ApiProjectsProject
     })
-
-    return { projects: apiProjects }
   }
 }

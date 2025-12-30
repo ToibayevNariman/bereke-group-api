@@ -602,6 +602,7 @@ async function seedProjectCatalogMockProjects(): Promise<void> {
         update: {
           status: CatalogProjectStatus.PUBLISHED,
           featured: project.featured,
+          showOnHome: true,
           areaM2: project.area.toFixed(2),
           floors: project.floors,
           bedrooms: details.bedrooms,
@@ -614,6 +615,7 @@ async function seedProjectCatalogMockProjects(): Promise<void> {
           code: project.code,
           status: CatalogProjectStatus.PUBLISHED,
           featured: project.featured,
+          showOnHome: true,
           areaM2: project.area.toFixed(2),
           floors: project.floors,
           bedrooms: details.bedrooms,

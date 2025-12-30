@@ -285,12 +285,53 @@
                   "if (pm.response.code === 200) {",
                   "  pm.test('Successful true', () => pm.expect(json.successful).to.eql(true));",
                   "  pm.test('projects is array', () => pm.expect(json.data.projects).to.be.an('array'));",
+                  "  if (json.data.projects.length > 0) {",
+                  "    pm.test('showOnHome exists', () => pm.expect(json.data.projects[0]).to.have.property('showOnHome'));",
+                  "  }",
                   "}"
                 ]
               }
             }
           ],
           "description": "Public endpoint. Response uses standard API envelope: { successful, data, error }. Locale is controlled by X-Lang (ru|kk|en)."
+        },
+        {
+          "name": "Home list - GET /api/projects-catalog/home",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects-catalog/home",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "projects-catalog", "home"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 503', () => pm.expect([200, 503]).to.include(pm.response.code));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has wrapper fields', () => {",
+                  "  pm.expect(json).to.have.property('successful');",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('projects is array', () => pm.expect(json.data.projects).to.be.an('array'));",
+                  "  if (json.data.projects.length > 0) {",
+                  "    const p = json.data.projects[0];",
+                  "    pm.test('details is not present', () => pm.expect(p).to.not.have.property('details'));",
+                  "    pm.test('showOnHome is true', () => pm.expect(p.showOnHome).to.eql(true));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "description": "Public endpoint for home page. Returns short projects list without details, filtered by showOnHome=true."
         }
       ]
     }
